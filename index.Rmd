@@ -1,0 +1,171 @@
+---
+title: "Monitoreo biológico participativo"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: rows
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(sf)
+library(leaflet)
+library(knitr)
+library(kableExtra)
+library(dplyr)
+
+# Registros de presencia de Chordata en la GAM
+gam_chordata <- 
+  st_read(
+    "https://raw.githubusercontent.com/atlas-servicios-ecosistemicos-gam/datos/master/biodiversidad/presencia/gam_chordata.geojson"
+  ) %>%
+  filter(phylum == "Chordata")
+
+# Registros de presencia de Pharomachrus mocinno (quetzal) en Costa Rica
+cr_pharomachrus_mocinno <-
+  st_read(
+    "https://raw.githubusercontent.com/geoprocesamiento-2020i/datos/master/biodiversidad/registros-presencia/cr/cr_pharomachrus_mocinno.geojson"
+  )
+
+
+# Registros de presencia de Mammalia en la GAM
+gam_mammalia <- 
+  gam_chordata %>%
+  filter(class=="Mammalia")
+
+# Registros de presencia de Amphibia en la GAM
+gam_amphibia <- 
+  gam_chordata %>%
+  filter(class=="Amphibia")
+
+# Registros de presencia de Reptilia en la GAM
+gam_reptilia <- 
+  gam_chordata %>%
+  filter(class=="Reptilia")
+
+# Límite de la GAM
+gam_limite <-
+  st_read(
+    "https://raw.githubusercontent.com/atlas-servicios-ecosistemicos-gam/datos/master/limite/gam_limite.geojson"
+  )
+```
+
+Column {.sidebar data-width=600}
+-----------------------------------------------------------------------
+
+### Mapa de distribución
+
+```{r}
+m <- leaflet(gam_limite) %>% 
+  addProviderTiles(providers$Esri.WorldImagery, group = "Imágenes de ESRI") %>% 
+  addProviderTiles(providers$Stamen.TonerLite, group = "Stamen Toner Lite") %>%
+  addProviderTiles(providers$OpenStreetMap.Mapnik, group = "OpenStreetMap") %>%
+  addPolygons(group = "Límite de la GAM") %>%
+  addCircleMarkers(data = cr_pharomachrus_mocinno,
+                   stroke = F,
+                   radius = 4,
+                   fillColor = 'brown',
+                   fillOpacity = 1,
+                   group = "Registros de Pharomachrus mocinno",
+                   popup = paste(cr_pharomachrus_mocinno$locality, 
+                                 cr_pharomachrus_mocinno$year, 
+                                 cr_pharomachrus_mocinno$order,
+                                 cr_pharomachrus_mocinno$species,
+                                 sep = '<br/>'
+                           )
+  ) %>%  
+  addCircleMarkers(data = gam_mammalia,
+                   stroke = F,
+                   radius = 4,
+                   fillColor = 'brown',
+                   fillOpacity = 1,
+                   group = "Registros de Mammalia",
+                   popup = paste(gam_mammalia$locality, 
+                                 gam_mammalia$year, 
+                                 gam_mammalia$order,
+                                 gam_mammalia$species,
+                                 sep = '<br/>'
+                           )
+  ) %>%
+  addCircleMarkers(data = gam_amphibia,
+                   stroke = F,
+                   radius = 4,
+                   fillColor = 'green',
+                   fillOpacity = 1,
+                   group = "Registros de Amphibia",
+                   popup = paste(gam_amphibia$locality, 
+                                 gam_amphibia$year, 
+                                 gam_amphibia$order,
+                                 gam_amphibia$species,
+                                 sep = '<br/>'
+                           )
+  ) %>%  
+  addCircleMarkers(data = gam_reptilia,
+                   stroke = F,
+                   radius = 4,
+                   fillColor = 'orange',
+                   fillOpacity = 1,
+                   group = "Registros de Reptilia",
+                   popup = paste(gam_reptilia$locality, 
+                                 gam_reptilia$year, 
+                                 gam_reptilia$order,
+                                 gam_reptilia$species,
+                                 sep = '<br/>'
+                           )
+  ) %>%    
+  addLayersControl(
+    baseGroups = c("OpenStreetMap", "Stamen Toner Lite", "Imágenes de ESRI"),
+    overlayGroups = c("Límite de la GAM", "Registros de Pharomachrus mocinno", "Registros de Mammalia", "Registros de Amphibia", "Registros de Reptilia"),
+    options = layersControlOptions(collapsed = TRUE)    
+  ) %>%
+  addMiniMap(
+    toggleDisplay = TRUE,
+    position = "bottomleft",
+    tiles = providers$Stamen.TonerLite
+  )
+
+# Despliegue del mapa
+m
+```
+
+Row {data-height=200}
+-------------------------------------
+### especies de vertebrados
+```{r}
+valueBox(length(unique(gam_chordata[["species"]])), icon = "fa-pencil")
+```
+
+### especies de _Mammalia_
+```{r}
+valueBox(length(unique(gam_mammalia[["species"]])), icon = "fa-pencil")
+```
+
+Row {data-height=200}
+-------------------------------------
+
+### especies de _Amphibia_
+```{r}
+valueBox(length(unique(gam_amphibia[["species"]])), icon = "fa-pencil")
+```
+
+### especies de _Reptilia_
+```{r}
+valueBox(length(unique(gam_reptilia[["species"]])), icon = "fa-pencil")
+```
+
+Row {data-height=600}
+-------------------------------------
+### Registros de presencia
+```{r}
+gam_mammalia %>%
+  select(Clase=class, Orden=order, Familia=family, Género=genus, Especie=species, Año=year, Localidad=locality) %>%
+  arrange(Clase) %>%
+  st_drop_geometry() %>%
+  kable()%>%
+  kable_styling() %>%
+  scroll_box(
+    width = "900px", 
+    height = "500px", 
+    fixed_thead = TRUE
+  )
+```
+
