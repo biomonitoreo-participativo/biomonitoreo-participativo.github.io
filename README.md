@@ -1,2 +1,2 @@
 # biomonitoreo-participativo.github.io
-Biomonitoreo participativo
+Biomonitoreo participativo-algo
